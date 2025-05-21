@@ -1,0 +1,22 @@
+#include <iostream>
+#include <pthread.h>
+
+void* printLines(void* threadName) {
+    for (int i = 1; i <= 10; ++i) {
+        std::cout << static_cast<char*>(threadName) << " - Line " << i << std::endl;
+    }
+    return nullptr;
+}
+
+int main() {
+    pthread_t newThread;
+    const char* threadName = "Child Thread";
+
+    pthread_create(&newThread, nullptr, printLines, (void*)threadName);
+
+    pthread_join(newThread, nullptr);
+
+    printLines((void*)"Main Thread");
+
+    return 0;
+}

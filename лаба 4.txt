@@ -1,0 +1,29 @@
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h> // Для sleep
+#include <csignal>  // Для обработки сигналов
+
+void* childThreadFunction(void* arg) {
+    for (int i = 0; i < 5; ++i) {
+        std::cout << "Child thread: Line " << i + 1 << std::endl;
+        sleep(1); // Задержка в 1 секунду для имитации работы
+    }
+    return nullptr;
+}
+
+int main() {
+    pthread_t childThread;
+
+    pthread_create(&childThread, nullptr, childThreadFunction, nullptr);
+
+    pthread_join(childThread, nullptr);
+
+    sleep(2);
+
+
+    pthread_cancel(childThread);
+
+    std::cout << "Parent thread: Child thread has been canceled." << std::endl;
+
+    return 0;
+}

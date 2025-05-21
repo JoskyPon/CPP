@@ -1,0 +1,18 @@
+#include <iostream>
+#include <thread>
+
+void printLines(const std::string& threadName) {
+    for (int i = 1; i <= 10; ++i) {
+        std::cout << threadName << " - Line " << i << std::endl;
+    }
+}
+
+int main() {
+    std::thread newThread(printLines, "Child Thread");
+
+    printLines("Main Thread");
+
+    newThread.join();
+
+    return 0;
+}

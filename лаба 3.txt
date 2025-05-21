@@ -1,0 +1,36 @@
+#include <iostream>
+#include <pthread.h>
+#include <vector>
+#include <string>
+
+void* printLines(void* arg) {
+    std::vector<std::string>* lines = static_cast<std::vector<std::string>*>(arg);
+    
+    for (const auto& line : *lines) {
+        std::cout << line << std::endl;
+    }
+    
+    return nullptr;
+}
+
+int main() {
+    const int numThreads = 4;
+    pthread_t threads[numThreads];
+
+    std::vector<std::vector<std::string>> threadLines = {
+        {"Thread 1 - Line 1", "Thread 1 - Line 2", "Thread 1 - Line 3"},
+        {"Thread 2 - Line 1", "Thread 2 - Line 2", "Thread 2 - Line 3"},
+        {"Thread 3 - Line 1", "Thread 3 - Line 2", "Thread 3 - Line 3"},
+        {"Thread 4 - Line 1", "Thread 4 - Line 2", "Thread 4 - Line 3"}
+    };
+
+    for (int i = 0; i < numThreads; ++i) {
+        pthread_create(&threads[i], nullptr, printLines, (void*)&threadLines[i]);
+    }
+
+    for (int i = 0; i < numThreads; ++i) {
+        pthread_join(threads[i], nullptr);
+    }
+
+    return 0;
+}

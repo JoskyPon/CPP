@@ -1,0 +1,45 @@
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h> // Для usleep
+#include <vector>
+#include <string>
+
+struct ThreadData {
+    std::string str;
+    int length;
+};
+
+void* sleepSort(void* arg) {
+    ThreadData* data = static_cast<ThreadData*>(arg);
+    
+    usleep(data->length * 1000); // Умножаем на 1000 для преобразования в миллисекунды
+
+    std::cout << data->str << std::endl;
+
+    delete data; // Освобождаем память
+    return nullptr;
+}
+
+int main() {
+    std::vector<std::string> lines;
+    std::string line;
+
+    while (std::getline(std::cin, line)) {
+        lines.push_back(line);
+    }
+
+    std::vector<pthread_t> threads;
+
+    for (const auto& str : lines) {
+        ThreadData* data = new ThreadData{str, static_cast<int>(str.length())};
+        pthread_t thread;
+        pthread_create(&thread, nullptr, sleepSort, data);
+        threads.push_back(thread);
+    }
+
+    for (auto& thread : threads) {
+        pthread_join(thread, nullptr);
+    }
+
+    return 0;
+}

@@ -1,0 +1,67 @@
+#include <iostream>
+#include <pthread.h>
+#include <vector>
+#include <cstdlib>
+
+const int TOTAL_ITERATIONS = 1000000;
+double partialSum = 0.0;
+pthread_mutex_t mutex;
+
+struct ThreadData {
+    int threadId;
+    int numThreads;
+};
+
+void* calculatePi(void* arg) {
+    ThreadData* data = static_cast<ThreadData*>(arg);
+    double localSum = 0.0;
+    int iterationsPerThread = TOTAL_ITERATIONS / data->numThreads;
+
+    for (int i = 0; i < iterationsPerThread; ++i) {
+        int termIndex = data->threadId * iterationsPerThread + i;
+        localSum += (termIndex % 2 == 0 ? 1.0 : -1.0) / (2 * termIndex + 1);
+    }
+
+    pthread_mutex_lock(&mutex);
+    partialSum += localSum;
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(nullptr);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <number_of_threads>" << std::endl;
+        return 1;
+    }
+
+    int numThreads = std::atoi(argv[1]);
+    
+    if (numThreads <= 0) {
+        std::cerr << "Number of threads must be a positive integer." << std::endl;
+        return 1;
+    }
+
+    pthread_t threads[numThreads];
+    ThreadData threadData[numThreads];
+    
+    pthread_mutex_init(&mutex, nullptr);
+
+    for (int i = 0; i < numThreads; ++i) {
+        threadData[i].threadId = i;
+        threadData[i].numThreads = numThreads;
+        pthread_create(&threads[i], nullptr, calculatePi, &threadData[i]);
+    }
+
+    for (int i = 0; i < numThreads; ++i) {
+        pthread_join(threads[i], nullptr);
+    }
+
+    double piEstimate = partialSum * 4.0;
+
+    std::cout << "Estimated value of Pi: " << piEstimate << std::endl;
+
+    pthread_mutex_destroy(&mutex);
+
+    return 0;
+}
