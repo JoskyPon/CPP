@@ -1,0 +1,40 @@
+#include <iostream>
+#include <thread>
+#include <semaphore.h>
+#include <chrono>
+
+sem_t mainThreadSemaphore;
+sem_t childThreadSemaphore;
+
+void printLines(const std::string& threadName) {
+    for (int i = 1; i <= 10; ++i) {
+        sem_wait(&childThreadSemaphore);
+
+        std::cout << threadName << " - Line " << i << std::endl;
+
+        sem_post(&mainThreadSemaphore);
+    }
+}
+
+int main() {
+    sem_init(&mainThreadSemaphore, 0, 1);
+    sem_init(&childThreadSemaphore, 0, 0);
+
+    std::thread newThread(printLines, "Child Thread");
+
+    for (int i = 1; i <= 10; ++i) {
+        std::cout << "Main Thread - Line " << i << std::endl;
+
+        sem_post(&childThreadSemaphore);
+        sem_wait(&mainThreadSemaphore);
+    }
+
+    sem_post(&childThreadSemaphore);
+
+    newThread.join();
+
+    sem_destroy(&mainThreadSemaphore);
+    sem_destroy(&childThreadSemaphore);
+
+    return 0;
+}
