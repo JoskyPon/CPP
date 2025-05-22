@@ -1,0 +1,38 @@
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
+std::mutex mtx;
+std::condition_variable cv;
+bool isMainThreadTurn = true;
+
+void printLines(const std::string& threadName) {
+    for (int i = 1; i <= 10; ++i) {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [] { return !isMainThreadTurn; });
+
+        std::cout << threadName << " - Line " << i << std::endl;
+
+        isMainThreadTurn = true;
+        cv.notify_all();
+    }
+}
+
+int main() {
+    std::thread newThread(printLines, "Child Thread");
+
+    for (int i = 1; i <= 10; ++i) {
+        std::unique_lock<std::mutex> lock(mtx);
+        std::cout << "Main Thread - Line " << i << std::endl;
+
+        isMainThreadTurn = false;
+        cv.notify_all();
+
+        cv.wait(lock, [] { return isMainThreadTurn; });
+    }
+
+    newThread.join();
+
+    return 0;
+}
