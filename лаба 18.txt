@@ -1,0 +1,86 @@
+#include <iostream>
+#include <string>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+#include <vector>
+
+struct Node {
+    std::string data;
+    Node* next;
+};
+
+class LinkedList {
+public:
+    LinkedList() : head(nullptr) {}
+
+    void insert(const std::string& str) {
+        Node* newNode = new Node{str, head};
+        head = newNode;
+    }
+
+    void print() {
+        Node* current = head;
+        while (current) {
+            std::cout << current->data << std::endl;
+            current = current->next;
+        }
+    }
+
+    void sort() {
+        if (!head) return;
+
+        bool swapped;
+        do {
+            swapped = false;
+            Node* current = head;
+            while (current && current->next) {
+                if (current->data > current->next->data) {
+                    std::swap(current->data, current->next->data);
+                    swapped = true;
+                }
+                current = current->next;
+            }
+        } while (swapped);
+    }
+
+private:
+    Node* head;
+};
+
+LinkedList list;
+std::mutex mtx;
+std::condition_variable cv;
+
+void sortThread() {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+        std::lock_guard<std::mutex> lock(mtx);
+        list.sort();
+        cv.notify_all();
+    }
+}
+
+int main() {
+    std::thread sorter(sortThread);
+
+    while (true) {
+        std::string input;
+        std::getline(std::cin, input);
+
+        if (input.empty()) {
+            std::lock_guard<std::mutex> lock(mtx);
+            list.print();
+            continue;
+        }
+
+        for (size_t i = 0; i < input.length(); i += 80) {
+            list.insert(input.substr(i, 80));
+        }
+    }
+
+    sorter.join();
+    return 0;
+}

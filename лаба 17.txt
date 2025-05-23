@@ -1,0 +1,59 @@
+#include <iostream>
+#include <semaphore.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+const char* SEM_MAIN = "/main_semaphore";
+const char* SEM_CHILD = "/child_semaphore";
+
+void printLines(const std::string& processName) {
+    for (int i = 1; i <= 10; ++i) {
+        sem_t* childSemaphore = sem_open(SEM_CHILD, 0);
+        sem_wait(childSemaphore);
+
+        std::cout << processName << " - Line " << i << std::endl;
+
+        sem_t* mainSemaphore = sem_open(SEM_MAIN, 0);
+        sem_post(mainSemaphore);
+    }
+}
+
+int main() {
+    sem_t* mainSemaphore = sem_open(SEM_MAIN, O_CREAT | O_EXCL, 0644, 1);
+    sem_t* childSemaphore = sem_open(SEM_CHILD, O_CREAT | O_EXCL, 0644, 0);
+
+    if (mainSemaphore == SEM_FAILED || childSemaphore == SEM_FAILED) {
+        std::cerr << "Failed to create semaphores." << std::endl;
+        return 1;
+    }
+
+    pid_t pid = fork();
+
+    if (pid == -1) {
+        std::cerr << "Fork failed." << std::endl;
+        return 1;
+    } else if (pid == 0) {
+        printLines("Child Process");
+    } else { // Родительский процесс
+        for (int i = 1; i <= 10; ++i) {
+            sem_wait(mainSemaphore);
+
+            std::cout << "Main Process - Line " << i << std::endl;
+
+            sem_post(childSemaphore);
+        }
+
+        sem_post(childSemaphore);
+
+        wait(NULL);
+    }
+
+    sem_close(mainSemaphore);
+    sem_close(childSemaphore);
+    sem_unlink(SEM_MAIN);
+    sem_unlink(SEM_CHILD);
+
+    return 0;
+}

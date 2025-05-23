@@ -1,0 +1,103 @@
+#include <iostream>
+#include <string>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+#include <vector>
+
+struct Node {
+    std::string data;
+    Node* next;
+    std::mutex nodeMutex;
+
+    Node(const std::string& str) : data(str), next(nullptr) {}
+};
+
+class LinkedList {
+public:
+    LinkedList() : head(nullptr) {}
+
+    void insert(const std::string& str) {
+        std::lock_guard<std::mutex> lock(headMutex);
+        Node* newNode = new Node(str);
+        newNode->next = head;
+        head = newNode;
+    }
+
+    void print() {
+        std::lock_guard<std::mutex> lock(headMutex);
+        Node* current = head;
+        while (current) {
+            std::cout << current->data << std::endl;
+            current = current->next;
+        }
+    }
+
+    void sort() {
+        if (!head) return;
+
+        bool swapped;
+        do {
+            swapped = false;
+            Node* current = head;
+
+            while (current && current->next) {
+                Node* nextNode = current->next;
+
+               
+                if (&current->nodeMutex < &nextNode->nodeMutex) {
+                    std::lock(current->nodeMutex, nextNode->nodeMutex);
+                } else {
+                    std::lock(nextNode->nodeMutex, current->nodeMutex);
+                }
+
+      
+                std::lock_guard<std::mutex> lock1(current->nodeMutex, std::adopt_lock);
+                std::lock_guard<std::mutex> lock2(nextNode->nodeMutex, std::adopt_lock);
+
+                if (current->data > nextNode->data) {
+                    std::swap(current->data, nextNode->data);
+                    swapped = true;
+                }
+
+                current = nextNode;
+            }
+        } while (swapped);
+    }
+
+private:
+    Node* head;
+    std::mutex headMutex;
+};
+
+LinkedList list;
+
+void sortThread() {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+        list.sort();
+    }
+}
+
+int main() {
+    std::thread sorter(sortThread);
+
+    while (true) {
+        std::string input;
+        std::getline(std::cin, input);
+
+        if (input.empty()) {
+            list.print();
+            continue;
+        }
+
+        for (size_t i = 0; i < input.length(); i += 80) {
+            list.insert(input.substr(i, 80));
+        }
+    }
+
+    sorter.join();
+    return 0;
+}

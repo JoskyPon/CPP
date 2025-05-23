@@ -1,0 +1,91 @@
+#include <iostream>
+#include <string>
+#include <thread>
+#include <shared_mutex>
+#include <chrono>
+#include <mutex> 
+
+struct Node {
+    std::string data;
+    Node* next;
+    std::shared_mutex nodeMutex; 
+};
+
+class LinkedList {
+public:
+    LinkedList() : head(nullptr) {}
+
+    void insert(const std::string& str) {
+        Node* newNode = new Node{str, head};
+        head = newNode;
+    }
+
+    void print() {
+        std::shared_lock<std::shared_mutex> lock(headMutex);
+        Node* current = head;
+        while (current) {
+            std::cout << current->data << std::endl;
+            current = current->next;
+        }
+    }
+
+    void sort() {
+        if (!head) return;
+
+        bool swapped;
+        do {
+            swapped = false;
+            Node* current = head;
+
+            while (current && current->next) {
+            
+                std::unique_lock<std::shared_mutex> lock1(current->nodeMutex);
+                std::unique_lock<std::shared_mutex> lock2(current->next->nodeMutex);
+
+                if (current->data > current->next->data) {
+                    std::swap(current->data, current->next->data);
+                    swapped = true;
+                }
+            
+                current = current->next; 
+            }
+        } while (swapped);
+    }
+
+private:
+    Node* head;
+    mutable std::shared_mutex headMutex; 
+};
+
+LinkedList list; 
+
+void sortThread() {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+       
+        list.sort();
+    }
+}
+
+int main() {
+    std::thread sorter(sortThread); 
+
+    while (true) {
+        std::string input;
+        std::getline(std::cin, input);
+
+        if (input.empty()) { 
+            list.print(); 
+            continue; 
+        }
+
+      
+        for (size_t i = 0; i < input.length(); i += 80) {
+            list.insert(input.substr(i, 80));
+        }
+    }
+
+    sorter.join();
+    return 0;
+}
